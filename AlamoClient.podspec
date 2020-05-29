@@ -16,7 +16,7 @@ Pod::Spec.new do |spec|
   #
 
   spec.name         = "AlamoClient"
-  spec.version      = "1.0.0"
+  spec.version      = "1.0.1"
   spec.summary      = "AlamoClient based on Alamofire."
 
   # This description is used to generate tags and improve search results.
