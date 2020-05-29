@@ -6,5 +6,5 @@ target 'Sample' do
   use_frameworks!
 
   # Pods for Sample
-  pod 'Alamofire', '~> 4.7.3'
+  pod 'AlamoClient', :path => '../'
 end

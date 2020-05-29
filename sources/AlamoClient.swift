@@ -6,33 +6,31 @@
 //  Copyright © 2019 CavanSu. All rights reserved.
 //
 
-import Foundation
 import Alamofire
 
-protocol AlamoClientDelegate: NSObjectProtocol {
+public protocol AlamoClientDelegate: NSObjectProtocol {
     func alamo(_ client: AlamoClient, requestSuccess event: AGERequestEvent, startTime: TimeInterval, url: String)
-    func alamo(_ client: AlamoClient, requestFail error: AGEError, event: AGERequestEvent, url: String)
+    func alamo(_ client: AlamoClient, requestFail error: ACError, event: AGERequestEvent, url: String)
 }
 
-class AlamoClient: NSObject, RequestClientProtocol, AGELogBase {
+public class AlamoClient: NSObject, RequestClientProtocol {
     private lazy var instances = [Int: SessionManager]() // Int: taskId
     private lazy var afterWorkers = [String: AfterWorker]() // String: AGERequestEvent name
     
     private var responseQueue = DispatchQueue(label: "Alamo_Client_Response_Queue")
     private var afterQueue = DispatchQueue(label: "Alamo_Client_After_Queue")
     
-    weak var delegate: AlamoClientDelegate?
+    public weak var delegate: AlamoClientDelegate?
+    public weak var logTube: ACLogTube?
     
-    var logTube: LogTube
-    
-    init(logTube: LogTube,
-         delegate: AlamoClientDelegate?) {
-        self.logTube = logTube
+    public init(delegate: AlamoClientDelegate? = nil,
+                logTube: ACLogTube? = nil) {
         self.delegate = delegate
+        self.logTube = logTube
     }
 }
 
-extension AlamoClient {
+public extension AlamoClient {
     func getCookieArray()-> [HTTPCookie]? {
         let cookieStorage = HTTPCookieStorage.shared
         let cookieArray = cookieStorage.cookies
@@ -44,7 +42,7 @@ extension AlamoClient {
     }
 }
 
-extension AlamoClient {
+public extension AlamoClient {
     func request(task: AGERequestTaskProtocol, responseOnMainQueue: Bool = true, success: AGEResponse? = nil, failRetry: ErrorRetryCompletion = nil) {
         privateRequst(task: task, responseOnMainQueue: responseOnMainQueue, success: success) { [unowned self] (error) in
             guard let eRetry = failRetry else {
@@ -103,7 +101,7 @@ extension AlamoClient {
 }
 
 // MARK: Request
-typealias AGEHttpMethod = HTTPMethod
+public typealias AGEHttpMethod = HTTPMethod
 
 extension HTTPMethod {
     fileprivate var encoding: ParameterEncoding {
@@ -187,6 +185,13 @@ private extension AlamoClient {
         log(info: "http upload, event: \(task.event.description)",
             extra: "url: \(url), parameter: \(OptionsDescription.any(task.parameters))")
         
+        var queue: DispatchQueue
+        if responseOnMainQueue {
+            queue = DispatchQueue.main
+        } else {
+            queue = responseQueue
+        }
+        
         instance.upload(multipartFormData: { (multiData) in
             multiData.append(task.object.fileData,
                              withName: task.object.fileKeyOnServer,
@@ -212,7 +217,7 @@ private extension AlamoClient {
                 upload.uploadProgress(queue: DispatchQueue.main, closure: { (progress) in
                 })
                 
-                upload.responseData { [unowned self] (dataResponse) in
+                upload.responseData(queue: queue) { [unowned self] (dataResponse) in
                     self.handle(dataResponse: dataResponse,
                                 from: task,
                                 url: url,
@@ -223,7 +228,7 @@ private extension AlamoClient {
                     self.removeWorker(of: task.event)
                 }
             case .failure(let error):
-                let mError = AGEError.fail(error.localizedDescription)
+                let mError = ACError.fail(error.localizedDescription)
                 self.request(error: mError, of: task.event, with: url)
                 if let requestFail = requestFail {
                     requestFail(mError)
@@ -265,16 +270,16 @@ private extension AlamoClient {
                     
                     try completion(json)
                 }
-            } catch let error as AGEError {
+            } catch let error as ACError {
                 if let fail = fail {
                     fail(error)
                 }
                 self.log(error: error, extra: "event: \(task.event)")
             } catch {
                 if let fail = fail {
-                    fail(AGEError.unknown())
+                    fail(ACError.unknown())
                 }
-                self.log(error: AGEError.unknown(), extra: "event: \(task.event)")
+                self.log(error: ACError.unknown(), extra: "event: \(task.event)")
             }
         case .fail(let error):
             self.request(error: error, of: task.event, with: url)
@@ -349,7 +354,7 @@ private extension AlamoClient {
     }
     
     enum CheckResult {
-        case pass, fail(AGEError)
+        case pass, fail(ACError)
         
         var rawValue: Int {
             switch self {
@@ -368,12 +373,12 @@ private extension AlamoClient {
     }
     
     enum CheckDataResult {
-        case pass(Data), fail(AGEError)
+        case pass(Data), fail(ACError)
     }
     
     func checkResponseData(_ dataResponse: DataResponse<Data>, event: AGERequestEvent) -> CheckDataResult {
-        var dataResult: CheckDataResult = .fail(AGEError.unknown())
-        var result: CheckResult = .fail(AGEError.unknown())
+        var dataResult: CheckDataResult = .fail(ACError.unknown())
+        var result: CheckResult = .fail(ACError.unknown())
         let code = dataResponse.response?.statusCode
         let checkIndexs = 3
         
@@ -385,7 +390,7 @@ private extension AlamoClient {
                 if let data = dataResponse.data {
                     dataResult = .pass(data)
                 } else {
-                    let error =  AGEError.fail("response data nil",
+                    let error =  ACError.fail("response data nil",
                                                extra: "return data nil, event: \(event.description)")
                     dataResult = .fail(error)
                 }
@@ -417,13 +422,13 @@ private extension AlamoClient {
             case .success:
                 result = .pass
             case .error(let code):
-                let error = AGEError.fail("response code error",
+                let error = ACError.fail("response code error",
                                           code: code,
                                           extra: "event: \(event.description)")
                 result = .fail(error)
             }
         } else {
-            let error = AGEError.fail("connect with server error, response code nil",
+            let error = ACError.fail("connect with server error, response code nil",
                                       extra: "event: \(event.description)")
             result = .fail(error)
         }
@@ -434,13 +439,13 @@ private extension AlamoClient {
         var result: CheckResult = .pass
         
         if let error = error as? AFError {
-            let mError = AGEError.fail(error.localizedDescription,
+            let mError = ACError.fail(error.localizedDescription,
                                        code: error.responseCode,
-                                       extra: "Alamofire, event: \(event.description)")
+                                       extra: "event: \(event.description)")
             result = .fail(mError)
         } else if let error = error {
-            let mError = AGEError.fail(error.localizedDescription,
-                                       extra: "Http, event: \(event.description)")
+            let mError = ACError.fail(error.localizedDescription,
+                                       extra: "event: \(event.description)")
             result = .fail(mError)
         }
         return result
@@ -453,7 +458,7 @@ private extension AlamoClient {
         self.delegate?.alamo(self, requestSuccess: event, startTime: startTime, url: url)
     }
     
-    func request(error: AGEError, of event: AGERequestEvent, with url: String) {
+    func request(error: ACError, of event: AGERequestEvent, with url: String) {
         self.delegate?.alamo(self, requestFail: error, event: event, url: url)
     }
 }
@@ -461,17 +466,26 @@ private extension AlamoClient {
 // MARK: Log
 private extension AlamoClient {
     func log(info: String, extra: String? = nil, funcName: String = #function) {
-        let className = AlamoClient.self
-        logOutputInfo(info, extra: extra, className: className, funcName: funcName)
+        logTube?.log(from: AlamoClient.self, info: info, extral: extra, funcName: funcName)
     }
     
     func log(warning: String, extra: String? = nil, funcName: String = #function) {
-        let className = AlamoClient.self
-        logOutputWarning(warning, extra: extra, className: className, funcName: funcName)
+        logTube?.log(from: AlamoClient.self, warning: warning, extral: extra, funcName: funcName)
     }
     
     func log(error: Error, extra: String? = nil, funcName: String = #function) {
-        let className = AlamoClient.self
-        logOutputError(error, extra: extra, className: className, funcName: funcName)
+        logTube?.log(from: AlamoClient.self, error: error, extral: extra, funcName: funcName)
+    }
+}
+
+// MARK: extension
+fileprivate extension Data {
+    func json() throws -> [String: Any] {
+        let object = try JSONSerialization.jsonObject(with: self, options: [])
+        guard let dic = object as? [String: Any] else {
+            throw ACError.convert("Any", "[String: Any]")
+        }
+        
+        return dic
     }
 }
