@@ -9,13 +9,13 @@
 import Alamofire
 
 public protocol AlamoClientDelegate: NSObjectProtocol {
-    func alamo(_ client: AlamoClient, requestSuccess event: AGERequestEvent, startTime: TimeInterval, url: String)
-    func alamo(_ client: AlamoClient, requestFail error: ACError, event: AGERequestEvent, url: String)
+    func alamo(_ client: AlamoClient, requestSuccess event: ACRequestEvent, startTime: TimeInterval, url: String)
+    func alamo(_ client: AlamoClient, requestFail error: ACError, event: ACRequestEvent, url: String)
 }
 
 public class AlamoClient: NSObject, RequestClientProtocol {
     private lazy var instances = [Int: SessionManager]() // Int: taskId
-    private lazy var afterWorkers = [String: AfterWorker]() // String: AGERequestEvent name
+    private lazy var afterWorkers = [String: AfterWorker]() // String: ACRequestEvent name
     
     private var responseQueue = DispatchQueue(label: "Alamo_Client_Response_Queue")
     private var afterQueue = DispatchQueue(label: "Alamo_Client_After_Queue")
@@ -43,7 +43,7 @@ public extension AlamoClient {
 }
 
 public extension AlamoClient {
-    func request(task: AGERequestTaskProtocol, responseOnMainQueue: Bool = true, success: AGEResponse? = nil, failRetry: ErrorRetryCompletion = nil) {
+    func request(task: ACRequestTaskProtocol, responseOnMainQueue: Bool = true, success: ACResponse? = nil, failRetry: ACErrorRetryCompletion = nil) {
         privateRequst(task: task, responseOnMainQueue: responseOnMainQueue, success: success) { [unowned self] (error) in
             guard let eRetry = failRetry else {
                 self.removeWorker(of: task.event)
@@ -53,7 +53,7 @@ public extension AlamoClient {
             let option = eRetry(error)
             switch option {
             case .retry(let time, let newTask):
-                var reTask: AGERequestTaskProtocol
+                var reTask: ACRequestTaskProtocol
                 
                 if let newTask = newTask {
                     reTask = newTask
@@ -71,7 +71,7 @@ public extension AlamoClient {
         }
     }
     
-    func upload(task: AGEUploadTaskProtocol, responseOnMainQueue: Bool = true, success: AGEResponse? = nil, failRetry: ErrorRetryCompletion = nil) {
+    func upload(task: ACUploadTaskProtocol, responseOnMainQueue: Bool = true, success: ACResponse? = nil, failRetry: ACErrorRetryCompletion = nil) {
         privateUpload(task: task, success: success) { [unowned self] (error) in
             guard let eRetry = failRetry else {
                 self.removeWorker(of: task.event)
@@ -81,9 +81,9 @@ public extension AlamoClient {
             let option = eRetry(error)
             switch option {
             case .retry(let time, let newTask):
-                var reTask: AGEUploadTaskProtocol
+                var reTask: ACUploadTaskProtocol
                 
-                if let newTask = newTask as? AGEUploadTaskProtocol {
+                if let newTask = newTask as? ACUploadTaskProtocol {
                     reTask = newTask
                 } else {
                     reTask = task
@@ -114,7 +114,7 @@ extension HTTPMethod {
 }
 
 private extension AlamoClient {
-    func privateRequst(task: AGERequestTaskProtocol, responseOnMainQueue: Bool = true, success: AGEResponse?, requestFail: ErrorCompletion) {
+    func privateRequst(task: ACRequestTaskProtocol, responseOnMainQueue: Bool = true, success: ACResponse?, requestFail: ACErrorCompletion) {
         guard let httpMethod = task.requestType.httpMethod else {
             fatalError("Request Type error")
         }
@@ -168,7 +168,7 @@ private extension AlamoClient {
         }
     }
     
-    func privateUpload(task: AGEUploadTaskProtocol, responseOnMainQueue: Bool = true, success: AGEResponse?, requestFail: ErrorCompletion) {
+    func privateUpload(task: ACUploadTaskProtocol, responseOnMainQueue: Bool = true, success: ACResponse?, requestFail: ACErrorCompletion) {
         guard let _ = task.requestType.httpMethod else {
             fatalError("Request Type error")
         }
@@ -238,7 +238,7 @@ private extension AlamoClient {
         }
     }
     
-    func handle(dataResponse: DataResponse<Data>, from task: AGERequestTaskProtocol, url: String, startTime: TimeInterval, success: AGEResponse?, fail: ErrorCompletion) {
+    func handle(dataResponse: DataResponse<Data>, from task: ACRequestTaskProtocol, url: String, startTime: TimeInterval, success: ACResponse?, fail: ACErrorCompletion) {
         let result = self.checkResponseData(dataResponse, event: task.event)
         switch result {
         case .pass(let data):
@@ -324,7 +324,7 @@ private extension AlamoClient {
         return fullURL
     }
     
-    func worker(of event: AGERequestEvent) -> AfterWorker {
+    func worker(of event: ACRequestEvent) -> AfterWorker {
         var work: AfterWorker
         if let tWork = self.afterWorkers[event.name] {
             work = tWork
@@ -334,7 +334,7 @@ private extension AlamoClient {
         return work
     }
     
-    func removeWorker(of event: AGERequestEvent) {
+    func removeWorker(of event: ACRequestEvent) {
         afterWorkers.removeValue(forKey: event.name)
     }
 }
@@ -376,7 +376,7 @@ private extension AlamoClient {
         case pass(Data), fail(ACError)
     }
     
-    func checkResponseData(_ dataResponse: DataResponse<Data>, event: AGERequestEvent) -> CheckDataResult {
+    func checkResponseData(_ dataResponse: DataResponse<Data>, event: ACRequestEvent) -> CheckDataResult {
         var dataResult: CheckDataResult = .fail(ACError.unknown())
         var result: CheckResult = .fail(ACError.unknown())
         let code = dataResponse.response?.statusCode
@@ -412,7 +412,7 @@ private extension AlamoClient {
         return dataResult
     }
     
-    func checkResponseCode(_ code: Int?, event: AGERequestEvent) -> CheckResult {
+    func checkResponseCode(_ code: Int?, event: ACRequestEvent) -> CheckResult {
         var result: CheckResult = .pass
         
         if let code = code {
@@ -435,7 +435,7 @@ private extension AlamoClient {
         return result
     }
     
-    func checkResponseContent(_ error: Error?, event: AGERequestEvent) -> CheckResult {
+    func checkResponseContent(_ error: Error?, event: ACRequestEvent) -> CheckResult {
         var result: CheckResult = .pass
         
         if let error = error as? AFError {
@@ -454,11 +454,11 @@ private extension AlamoClient {
 
 // MARK: Callback
 private extension AlamoClient {
-    func requestSuccess(of event: AGERequestEvent, startTime: TimeInterval, with url: String) {
+    func requestSuccess(of event: ACRequestEvent, startTime: TimeInterval, with url: String) {
         self.delegate?.alamo(self, requestSuccess: event, startTime: startTime, url: url)
     }
     
-    func request(error: ACError, of event: AGERequestEvent, with url: String) {
+    func request(error: ACError, of event: ACRequestEvent, with url: String) {
         self.delegate?.alamo(self, requestFail: error, event: event, url: url)
     }
 }

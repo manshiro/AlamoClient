@@ -31,7 +31,7 @@ class ViewController: NSViewController {
                                type: .http(.get, url: url),
                                timeout: .low)
         
-        client.request(task: task, success: AGEResponse.json({ (json) in
+        client.request(task: task, success: ACResponse.json({ (json) in
             print("weather json: \(json.description)")
         })) { (error) -> RetryOptions in
             print("error: \(error.localizedDescription)")
@@ -50,7 +50,7 @@ class ViewController: NSViewController {
                                header: headers,
                                parameters: parameters)
         
-        client.request(task: task, success: AGEResponse.json({ (json) in
+        client.request(task: task, success: ACResponse.json({ (json) in
             print("weather json: \(json.description)")
         })) { (error) -> RetryOptions in
             print("error: \(error.localizedDescription)")
@@ -60,11 +60,11 @@ class ViewController: NSViewController {
 }
 
 extension ViewController: AlamoClientDelegate {
-    func alamo(_ client: AlamoClient, requestSuccess event: AGERequestEvent, startTime: TimeInterval, url: String) {
+    func alamo(_ client: AlamoClient, requestSuccess event: ACRequestEvent, startTime: TimeInterval, url: String) {
         print("request success, event: \(event.description), url: \(url)")
     }
     
-    func alamo(_ client: AlamoClient, requestFail error: ACError, event: AGERequestEvent, url: String) {
+    func alamo(_ client: AlamoClient, requestFail error: ACError, event: ACRequestEvent, url: String) {
         print("request error, event: \(event.description), error: \(error.localizedDescription), url: \(url)")
     }
 }

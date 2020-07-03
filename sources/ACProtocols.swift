@@ -14,25 +14,25 @@ public protocol ACLogTube: NSObjectProtocol {
     func log(from: AnyClass, error: Error, extral: String?, funcName: String)
 }
 
-public protocol AGERequestEvent: CustomStringConvertible {
+public protocol ACRequestEvent: CustomStringConvertible {
     var name: String {get set}
 }
 
-public protocol AGERequestTaskProtocol {
+public protocol ACRequestTaskProtocol {
     var id: Int {get set}
-    var event: AGERequestEvent {get set}
+    var event: ACRequestEvent {get set}
     var requestType: RequestType {get set}
-    var timeout: RequestTimeout {get set}
+    var timeout: ACRequestTimeout {get set}
     var header: [String: String]? {get set}
     var parameters: [String: Any]? {get set}
 }
 
-public protocol AGEUploadTaskProtocol: AGERequestTaskProtocol {
+public protocol ACUploadTaskProtocol: ACRequestTaskProtocol {
     var object: UploadObject {get set}
 }
 
 // MARK: - Request APIs
 public protocol RequestClientProtocol {
-    func request(task: AGERequestTaskProtocol, responseOnMainQueue: Bool, success: AGEResponse?, failRetry: ErrorRetryCompletion)
-    func upload(task: AGEUploadTaskProtocol, responseOnMainQueue: Bool, success: AGEResponse?, failRetry: ErrorRetryCompletion)
+    func request(task: ACRequestTaskProtocol, responseOnMainQueue: Bool, success: ACResponse?, failRetry: ACErrorRetryCompletion)
+    func upload(task: ACUploadTaskProtocol, responseOnMainQueue: Bool, success: ACResponse?, failRetry: ACErrorRetryCompletion)
 }

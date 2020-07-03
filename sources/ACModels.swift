@@ -8,23 +8,23 @@
 
 import Foundation
 
-public typealias DicCompletion = (([String: Any]) -> Void)?
-public typealias AnyCompletion = ((Any?) -> Void)?
-public typealias StringCompletion = ((String) -> Void)?
-public typealias IntCompletion = ((Int) -> Void)?
-public typealias Completion = (() -> Void)?
+public typealias ACDicCompletion = (([String: Any]) -> Void)?
+public typealias ACAnyCompletion = ((Any?) -> Void)?
+public typealias ACStringCompletion = ((String) -> Void)?
+public typealias ACIntCompletion = ((Int) -> Void)?
+public typealias ACCompletion = (() -> Void)?
 
-public typealias DicEXCompletion = (([String: Any]) throws -> Void)?
-public typealias StringExCompletion = ((String) throws -> Void)?
-public typealias DataExCompletion = ((Data) throws -> Void)?
+public typealias ACDicEXCompletion = (([String: Any]) throws -> Void)?
+public typealias ACStringExCompletion = ((String) throws -> Void)?
+public typealias ACDataExCompletion = ((Data) throws -> Void)?
 
-public typealias ErrorCompletion = ((ACError) -> Void)?
-public typealias ErrorBoolCompletion = ((ACError) -> Bool)?
-public typealias ErrorRetryCompletion = ((ACError) -> RetryOptions)?
+public typealias ACErrorCompletion = ((Error) -> Void)?
+public typealias ACErrorBoolCompletion = ((Error) -> Bool)?
+public typealias ACErrorRetryCompletion = ((Error) -> RetryOptions)?
 
 // MARK: enum
 public enum RetryOptions {
-    case retry(after: TimeInterval, newTask: AGERequestTaskProtocol? = nil), resign
+    case retry(after: TimeInterval, newTask: ACRequestTaskProtocol? = nil), resign
 }
 
 public enum ACSwitch: Int, CustomStringConvertible {
@@ -78,14 +78,14 @@ public enum RequestType {
     }
 }
 
-public enum AGEResponse {
-    case json(DicEXCompletion), data(DataExCompletion), blank(Completion)
+public enum ACResponse {
+    case json(ACDicEXCompletion), data(ACDataExCompletion), blank(ACCompletion)
 }
 
-public enum RequestTimeout {
+public enum ACRequestTimeout {
     case low, medium, high, custom(TimeInterval)
     
-    var value: TimeInterval {
+    public var value: TimeInterval {
         switch self {
         case .low:               return 20
         case .medium:            return 10
@@ -98,7 +98,7 @@ public enum RequestTimeout {
 public enum FileMIME {
     case png, zip
     
-    var text: String {
+    public var text: String {
         switch self {
         case .png: return "image/png"
         case .zip: return "application/octet-stream"
@@ -107,7 +107,7 @@ public enum FileMIME {
 }
 
 // MARK: struct
-public struct RequestEvent: AGERequestEvent {
+public struct RequestEvent: ACRequestEvent {
     public var name: String
     
     public var description: String {
@@ -128,10 +128,10 @@ public struct RequestEvent: AGERequestEvent {
 }
 
 public struct UploadObject: CustomStringConvertible {
-    var fileKeyOnServer: String
-    var fileName: String
-    var fileData: Data
-    var mime: FileMIME
+    public var fileKeyOnServer: String
+    public var fileName: String
+    public var fileData: Data
+    public var mime: FileMIME
     
     public var description: String {
         return cusDescription()
@@ -148,17 +148,17 @@ public struct UploadObject: CustomStringConvertible {
     }
 }
 
-public struct RequestTask: AGERequestTaskProtocol {
+public struct RequestTask: ACRequestTaskProtocol {
     public var id: Int
-    public var event: AGERequestEvent
+    public var event: ACRequestEvent
     public var requestType: RequestType
-    public var timeout: RequestTimeout
+    public var timeout: ACRequestTimeout
     public var header: [String : String]?
     public var parameters: [String : Any]?
     
-    public init(event: AGERequestEvent,
+    public init(event: ACRequestEvent,
          type: RequestType,
-         timeout: RequestTimeout = .medium,
+         timeout: ACRequestTimeout = .medium,
          header: [String: String]? = nil,
          parameters: [String: Any]? = nil) {
         TaskId.value += 1
@@ -171,7 +171,7 @@ public struct RequestTask: AGERequestTaskProtocol {
     }
 }
 
-public struct UploadTask: AGEUploadTaskProtocol, CustomStringConvertible {
+public struct UploadTask: ACUploadTaskProtocol, CustomStringConvertible {
     public var description: String {
         return cusDescription()
     }
@@ -181,8 +181,8 @@ public struct UploadTask: AGEUploadTaskProtocol, CustomStringConvertible {
     }
     
     public var id: Int
-    public var event: AGERequestEvent
-    public var timeout: RequestTimeout
+    public var event: ACRequestEvent
+    public var timeout: ACRequestTimeout
     public var url: String
     public var header: [String: String]?
     public var parameters: [String: Any]?
@@ -190,8 +190,8 @@ public struct UploadTask: AGEUploadTaskProtocol, CustomStringConvertible {
     public var object: UploadObject
     public var requestType: RequestType
     
-    init(event: AGERequestEvent,
-         timeout: RequestTimeout = .medium,
+    init(event: ACRequestEvent,
+         timeout: ACRequestTimeout = .medium,
          object: UploadObject,
          url: String,
          fileData: Data,
