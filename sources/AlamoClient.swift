@@ -270,16 +270,11 @@ private extension AlamoClient {
                     
                     try completion(json)
                 }
-            } catch let error as ACError {
+            } catch {
                 if let fail = fail {
                     fail(error)
                 }
                 self.log(error: error, extra: "event: \(task.event)")
-            } catch {
-                if let fail = fail {
-                    fail(ACError.unknown())
-                }
-                self.log(error: ACError.unknown(), extra: "event: \(task.event)")
             }
         case .fail(let error):
             self.request(error: error, of: task.event, with: url)
